@@ -232,7 +232,8 @@ class Disk:
 
         for count in range(1, 11):
             with cl.suppress(OSError):
-                os.makedirs(full_dir)
+                # Keep file-storage directories private to the cache owner.
+                os.makedirs(full_dir, 0o700)
 
             try:
                 # Another cache may have deleted the directory before
@@ -417,7 +418,9 @@ def args_to_key(base, args, kwargs, typed, ignore):
 class Cache:
     """Disk and file backed cache."""
 
-    def __init__(self, directory=None, timeout=60, disk=Disk, **settings):
+    # Use JSONDisk by default so the common path avoids pickle-based
+    # serialization for cache keys and values.
+    def __init__(self, directory=None, timeout=60, disk=JSONDisk, **settings):
         """Initialize cache instance.
 
         :param str directory: cache directory
@@ -444,7 +447,8 @@ class Cache:
 
         if not op.isdir(directory):
             try:
-                os.makedirs(directory, 0o755)
+                # Keep the cache root private because cached data may be sensitive.
+                os.makedirs(directory, 0o700)
             except OSError as error:
                 if error.errno != errno.EEXIST:
                     raise EnvironmentError(
